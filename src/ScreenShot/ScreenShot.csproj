@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets/app.ico</ApplicationIcon>
+    <Version>0.1.0</Version>
+    <Description>Local screenshot capture and annotation for Windows</Description>
+    <!-- WPF owns DPI initialization; WinForms is used only for tray/dialog interop. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../ScreenShot.Core/ScreenShot.Core.csproj" /></ItemGroup>
+  <ItemGroup><Resource Include="Assets/app.ico" /></ItemGroup>
+</Project>

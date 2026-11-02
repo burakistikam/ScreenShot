@@ -1,0 +1,102 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using Forms = System.Windows.Forms;
+
+namespace ScreenShot;
+
+public partial class App : Application
+{
+    private Mutex? instance;
+    private Forms.NotifyIcon? tray;
+    private System.Drawing.Icon? trayIcon;
+    private GlobalShortcut? shortcut;
+    private Dashboard? dashboard;
+    private OverlayWindow? overlay;
+    private bool capturing;
+    internal Settings Preferences { get; private set; } = new();
+    internal string ShortcutStatus { get; private set; } = "";
+    internal bool Exiting { get; private set; }
+    internal bool RecordingShortcut { get; set; }
+
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+        instance = new Mutex(true, "Local\\ScreenShot.Desktop.v1", out bool first);
+        if (!first) { MessageBox.Show("ScreenShot is already running. Open it from the system tray.", "ScreenShot"); Shutdown(); return; }
+        Preferences = Settings.Load();
+        shortcut = new GlobalShortcut();
+        shortcut.Pressed += () => { if (!RecordingShortcut) _ = CaptureAsync(); };
+        if (!shortcut.TrySet(Preferences.Modifiers, Preferences.Key))
+        {
+            if (shortcut.TrySet(6, 0x53))
+            {
+                Preferences.Modifiers = 6; Preferences.Key = 0x53; Preferences.ShortcutLabel = "Ctrl + Shift + S";
+                ShortcutStatus = "Print Screen or your saved shortcut is busy. Using Ctrl + Shift + S for this session.";
+            }
+            else ShortcutStatus = "Shortcut is in use by another app. Choose a different shortcut below; Capture still works.";
+        }
+        using (var iconStream=GetResourceStream(new Uri("pack://application:,,,/Assets/app.ico")).Stream)
+            trayIcon=new System.Drawing.Icon(iconStream);
+        tray = new Forms.NotifyIcon { Icon = trayIcon, Text = "ScreenShot — capture & annotate", Visible = true };
+        var menu = new Forms.ContextMenuStrip();
+        menu.Items.Add("Capture area", null, (_, _) => Dispatcher.InvokeAsync(() => _ = CaptureAsync()));
+        menu.Items.Add("Open ScreenShot", null, (_, _) => Dispatcher.InvokeAsync(ShowDashboard));
+        menu.Items.Add(new Forms.ToolStripSeparator());
+        menu.Items.Add("Exit", null, (_, _) => Dispatcher.InvokeAsync(Quit));
+        tray.ContextMenuStrip = menu;
+        tray.DoubleClick += (_, _) => Dispatcher.InvokeAsync(ShowDashboard);
+        ShowDashboard();
+    }
+
+    internal void ShowDashboard()
+    {
+        if (overlay != null) { overlay.Activate(); return; }
+        dashboard ??= new Dashboard(this);
+        dashboard.Show(); dashboard.WindowState = WindowState.Normal; dashboard.Activate();
+    }
+
+    internal async Task CaptureAsync()
+    {
+        if (capturing || overlay != null) return;
+        capturing = true;
+        bool restoreDashboard = dashboard?.IsVisible == true;
+        try
+        {
+            dashboard?.Hide();
+            await Task.Delay(180);
+            var frame = Native.Capture();
+            overlay = new OverlayWindow(frame, Preferences);
+            overlay.Completed += message => { dashboard?.SetStatus(message); };
+            overlay.Closed += (_, _) => { overlay = null; if (restoreDashboard) ShowDashboard(); };
+            overlay.Show(); overlay.Activate();
+        }
+        catch (Exception ex)
+        {
+            overlay = null; ShowDashboard();
+            MessageBox.Show("Could not capture the desktop.\n" + ex.Message, "ScreenShot", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally { capturing = false; }
+    }
+
+    internal bool ChangeShortcut(uint modifiers, uint key, string label)
+    {
+        if (Preferences.Modifiers == modifiers && Preferences.Key == key && ShortcutStatus.Length == 0) return true;
+        if (shortcut?.TrySet(modifiers, key) != true) return false;
+        Preferences.Modifiers = modifiers; Preferences.Key = key; Preferences.ShortcutLabel = label;
+        ShortcutStatus = "";
+        try { Preferences.Save(); }
+        catch (Exception ex) { MessageBox.Show("Shortcut changed for this session, but settings could not be saved.\n" + ex.Message, "ScreenShot"); }
+        return true;
+    }
+
+    internal void Quit() { Exiting = true; overlay?.Close(); Shutdown(); }
+    protected override void OnExit(ExitEventArgs e)
+    {
+        shortcut?.Dispose();
+        if (tray != null) { tray.Visible = false; tray.ContextMenuStrip?.Dispose(); tray.Dispose(); }
+        trayIcon?.Dispose();
+        instance?.Dispose(); base.OnExit(e);
+    }
+}
