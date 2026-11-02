@@ -48,6 +48,7 @@ internal sealed class GlobalShortcut : IDisposable
 {
     private readonly HwndSource source;
     private int activeId;
+    private uint activeModifiers,activeKey;
     internal event Action? Pressed;
     internal GlobalShortcut()
     {
@@ -56,11 +57,13 @@ internal sealed class GlobalShortcut : IDisposable
     }
     internal bool TrySet(uint modifiers, uint key)
     {
+        if(activeId!=0&&activeModifiers==modifiers&&activeKey==key)return true;
         int nextId = activeId == 1 ? 2 : 1;
         // Register the replacement first, preserving the old binding on conflict.
         if (!Native.RegisterHotKey(source.Handle, nextId, modifiers | 0x4000, key)) return false;
         if (activeId != 0) Native.UnregisterHotKey(source.Handle, activeId);
         activeId = nextId;
+        activeModifiers=modifiers;activeKey=key;
         return true;
     }
     private IntPtr Hook(IntPtr hwnd, int msg, IntPtr w, IntPtr l, ref bool handled)

@@ -4,11 +4,22 @@
   <Style TargetType="Button">
    <Setter Property="Foreground" Value="#F1F5F9"/><Setter Property="Background" Value="#253349"/>
    <Setter Property="Padding" Value="14,10"/><Setter Property="Margin" Value="3"/>
-   <Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/>
-   <Setter Property="FontSize" Value="13"/>
+   <Setter Property="BorderThickness" Value="1"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="Cursor" Value="Hand"/>
+   <Setter Property="FontSize" Value="13"/><Setter Property="MinHeight" Value="36"/>
+   <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
-    <Border x:Name="Box" Background="{TemplateBinding Background}" CornerRadius="7" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
-    <ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Box" Property="Opacity" Value="0.8"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter TargetName="Box" Property="Opacity" Value="0.35"/></Trigger></ControlTemplate.Triggers>
+    <Grid>
+     <Border x:Name="Box" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7"/>
+     <Border x:Name="StateTint" Background="White" Opacity="0" CornerRadius="7" IsHitTestVisible="False"/>
+     <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"><ContentPresenter.Resources><Style TargetType="TextBlock"><Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Style></ContentPresenter.Resources></ContentPresenter>
+     <Border x:Name="FocusRing" BorderBrush="#A5F3E0" BorderThickness="2" CornerRadius="9" Margin="-3" Visibility="Collapsed" IsHitTestVisible="False"/>
+    </Grid>
+    <ControlTemplate.Triggers>
+     <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="StateTint" Property="Opacity" Value="0.09"/></Trigger>
+     <Trigger Property="IsPressed" Value="True"><Setter TargetName="StateTint" Property="Background" Value="Black"/><Setter TargetName="StateTint" Property="Opacity" Value="0.18"/></Trigger>
+     <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="FocusRing" Property="Visibility" Value="Visible"/></Trigger>
+     <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/><Setter Property="Cursor" Value="Arrow"/></Trigger>
+    </ControlTemplate.Triggers>
    </ControlTemplate></Setter.Value></Setter>
   </Style>
   <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#E2E8F0"/></Style>

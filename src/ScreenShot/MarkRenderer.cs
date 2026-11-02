@@ -11,6 +11,20 @@ namespace ScreenShot;
 
 internal static class MarkRenderer
 {
+    internal static bool HitTest(Mark mark, Pt point)
+    {
+        if(mark.Points.Count==0)return false;
+        if(mark.Tool==Tool.Text)return Bounds(mark).Contains(Point(point));
+        var a=Point(mark.Points[0]);var b=Point(mark.Points[^1]);var p=Point(point);
+        double tolerance=Math.Max(6,mark.Width/2+3);
+        if(mark.Tool==Tool.Highlight)return new Rect(a,b).Contains(p);
+        if(mark.Tool==Tool.Rectangle){var r=new Rect(a,b);return Near(p,r.TopLeft,r.TopRight,tolerance)||Near(p,r.TopRight,r.BottomRight,tolerance)||Near(p,r.BottomRight,r.BottomLeft,tolerance)||Near(p,r.BottomLeft,r.TopLeft,tolerance);}
+        for(int i=1;i<mark.Points.Count;i++)if(Near(p,Point(mark.Points[i-1]),Point(mark.Points[i]),tolerance))return true;
+        if(mark.Points.Count==1)return (p-a).Length<=tolerance;
+        if(mark.Tool==Tool.Arrow){var v=a-b;if(v.Length>0.01){v.Normalize();var side=new Vector(-v.Y,v.X);double length=Math.Max(12,mark.Width*4);return Near(p,b,b+v*length+side*length*0.5,tolerance)||Near(p,b,b+v*length-side*length*0.5,tolerance);}}
+        return false;
+    }
+    private static bool Near(Point p,Point a,Point b,double tolerance){var v=b-a;double t=v.LengthSquared<0.001?0:Math.Clamp(Vector.Multiply(p-a,v)/v.LengthSquared,0,1);return (p-(a+v*t)).Length<=tolerance;}
     internal static Point Point(Pt p) => new(p.X, p.Y);
     internal static Rect Rect(Box b) => new(b.X, b.Y, b.Width, b.Height);
     internal static FormattedText Text(Mark m)

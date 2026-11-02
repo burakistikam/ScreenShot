@@ -19,6 +19,7 @@ internal static class Program
         var pixels = new byte[200*140*4];
         for(int i=0;i<pixels.Length;i+=4){pixels[i]=90;pixels[i+1]=70;pixels[i+2]=50;pixels[i+3]=255;}
         var source=BitmapSource.Create(200,140,96,96,PixelFormats.Bgra32,null,pixels,800);
+        EditorBehaviorTests.Run(Check,source);
         Check("export crops only selected pixels without overlay dimming or toolbar",()=> {
             var image=MarkRenderer.Export(source,new Box(30,20,100,60),Array.Empty<Mark>());
             Equal(100,image.PixelWidth);Equal(60,image.PixelHeight);
@@ -82,7 +83,8 @@ internal static class Program
             var app=new App();app.InitializeComponent();
             Directory.CreateDirectory("artifacts/previews");
             var dashboard=new Dashboard(app);
-            Render((FrameworkElement)dashboard.Content,760,580,"artifacts/previews/dashboard.png");
+            Render((FrameworkElement)dashboard.Content,840,720,"artifacts/previews/dashboard.png");
+            Render((FrameworkElement)dashboard.Content,640,600,"artifacts/previews/dashboard-small.png");
             dashboard.Close();
             var fixture=new DrawingVisual();using(var dc=fixture.RenderOpen()){
                 dc.DrawRectangle(Dashboard.Brush("#EDF2F7"),null,new Rect(0,0,1280,800));
@@ -98,6 +100,7 @@ internal static class Program
             surface.Area=new Box(180,180,850,400);surface.HasSelection=true;
             surface.Document.Add(new(Guid.NewGuid(),Tool.Arrow,new[]{new Pt(700,420),new Pt(590,335)},"#FF4D67",4,""));
             surface.Document.Add(new(Guid.NewGuid(),Tool.Text,new[]{new Pt(720,440)},"#FF4D67",3,"Right here",260));
+            typeof(OverlayWindow).GetMethod("SetTool",flags)!.Invoke(overlay,new object[]{Tool.Arrow});
             typeof(OverlayWindow).GetMethod("Refresh",flags)!.Invoke(overlay,new object[]{true});
             Render((FrameworkElement)overlay.Content,1280,800,"artifacts/previews/editor.png");overlay.Close();
         }

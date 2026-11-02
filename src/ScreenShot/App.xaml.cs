@@ -9,6 +9,8 @@ namespace ScreenShot;
 public partial class App : Application
 {
     private Mutex? instance;
+    private EventWaitHandle? activation;
+    private RegisteredWaitHandle? activationWait;
     private Forms.NotifyIcon? tray;
     private System.Drawing.Icon? trayIcon;
     private GlobalShortcut? shortcut;
@@ -23,8 +25,10 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        activation=new EventWaitHandle(false,EventResetMode.AutoReset,"Local\\ScreenShot.Activate.v1");
         instance = new Mutex(true, "Local\\ScreenShot.Desktop.v1", out bool first);
-        if (!first) { MessageBox.Show("ScreenShot is already running. Open it from the system tray.", "ScreenShot"); Shutdown(); return; }
+        if (!first) { activation.Set(); Shutdown(); return; }
+        activationWait=ThreadPool.RegisterWaitForSingleObject(activation,(_,_)=>Dispatcher.BeginInvoke(ShowDashboard),null,Timeout.Infinite,false);
         Preferences = Settings.Load();
         shortcut = new GlobalShortcut();
         shortcut.Pressed += () => { if (!RecordingShortcut) _ = CaptureAsync(); };
@@ -52,6 +56,7 @@ public partial class App : Application
 
     internal void ShowDashboard()
     {
+        if(Exiting)return;
         if (overlay != null) { overlay.Activate(); return; }
         dashboard ??= new Dashboard(this);
         dashboard.Show(); dashboard.WindowState = WindowState.Normal; dashboard.Activate();
@@ -94,6 +99,7 @@ public partial class App : Application
     internal void Quit() { Exiting = true; overlay?.Close(); Shutdown(); }
     protected override void OnExit(ExitEventArgs e)
     {
+        activationWait?.Unregister(null);activation?.Dispose();
         shortcut?.Dispose();
         if (tray != null) { tray.Visible = false; tray.ContextMenuStrip?.Dispose(); tray.Dispose(); }
         trayIcon?.Dispose();
