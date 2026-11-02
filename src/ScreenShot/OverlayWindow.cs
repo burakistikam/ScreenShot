@@ -50,7 +50,7 @@ internal sealed class OverlayWindow : Window
     {
         this.frame = frame; this.settings = settings;
         Title = "ScreenShot — select an area"; WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.NoResize;
-        ShowInTaskbar = false; Topmost = true; Background = Brushes.Black; WindowStartupLocation = WindowStartupLocation.Manual;
+        ShowInTaskbar = true; Topmost = true; Background = Brushes.Black; WindowStartupLocation = WindowStartupLocation.Manual;
         surface = new EditorSurface(frame.Bitmap);
         canvas = new Canvas { Width = frame.Bitmap.PixelWidth, Height = frame.Bitmap.PixelHeight, ClipToBounds = true };
         canvas.Children.Add(surface);
@@ -95,7 +95,8 @@ internal sealed class OverlayWindow : Window
         {
             var handle = new WindowInteropHelper(this).Handle;
             hwndSource = HwndSource.FromHwnd(handle); hwndSource?.AddHook(WindowHook);
-            Native.SetWindowPos(handle, new IntPtr(-1), frame.Left, frame.Top, frame.Bitmap.PixelWidth, frame.Bitmap.PixelHeight, 0x0040);
+            if(!Native.SetWindowPos(handle, new IntPtr(-1), frame.Left, frame.Top, frame.Bitmap.PixelWidth, frame.Bitmap.PixelHeight, 0x0040))
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(),"Could not position the capture overlay.");
         };
         Loaded += (_, _) => { surface.Focus(); SetTool(Tool.Arrow); };
         Closed += (_, _) => { hwndSource?.RemoveHook(WindowHook); };

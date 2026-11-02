@@ -64,22 +64,28 @@ public partial class App : Application
 
     internal async Task CaptureAsync()
     {
-        if (capturing || overlay != null) return;
+        CaptureTrace.Write($"Capture requested; busy={capturing}; overlay={overlay!=null}");
+        if(capturing)return;
+        if(overlay!=null){overlay.Show();overlay.Activate();return;}
         capturing = true;
         bool restoreDashboard = dashboard?.IsVisible == true;
         try
         {
             dashboard?.Hide();
             await Task.Delay(180);
+            CaptureTrace.Write("Starting desktop capture");
             var frame = Native.Capture();
+            CaptureTrace.Write($"Captured {frame.Bitmap.PixelWidth}x{frame.Bitmap.PixelHeight} at {frame.Left},{frame.Top}");
             overlay = new OverlayWindow(frame, Preferences);
             overlay.Completed += message => { dashboard?.SetStatus(message); };
             overlay.Closed += (_, _) => { overlay = null; if (restoreDashboard) ShowDashboard(); };
             overlay.Show(); overlay.Activate();
+            CaptureTrace.Write($"Overlay shown; visible={overlay.IsVisible}; active={overlay.IsActive}; size={overlay.ActualWidth}x{overlay.ActualHeight}");
         }
         catch (Exception ex)
         {
-            overlay = null; ShowDashboard();
+            CaptureTrace.Write("Capture failed: "+ex);
+            var failedOverlay = overlay; overlay = null; failedOverlay?.Close(); ShowDashboard();
             MessageBox.Show("Could not capture the desktop.\n" + ex.Message, "ScreenShot", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         finally { capturing = false; }
