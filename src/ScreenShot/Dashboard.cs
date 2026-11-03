@@ -25,7 +25,7 @@ internal sealed class Dashboard : Window
         Background = Brush("#0D1520"); FontFamily = new FontFamily("Segoe UI");
         var root = new StackPanel { Margin = new Thickness(24) };
         var heading = new DockPanel { Margin = new Thickness(0, 0, 0, 5) };
-        var version = Text("v0.3.0", 11, "#9AACBE"); version.VerticalAlignment = VerticalAlignment.Center;
+        var version = Text("v0.3.1", 11, "#9AACBE"); version.VerticalAlignment = VerticalAlignment.Center;
         DockPanel.SetDock(version, Dock.Right); heading.Children.Add(version);
         heading.Children.Add(Text("ScreenShot", 24, "#F1F5F9", FontWeights.SemiBold)); root.Children.Add(heading);
         var subtitle = Text("Select an area, annotate, then copy or save.", 13, "#9FB0C4"); subtitle.Margin = new Thickness(0, 0, 0, 18); root.Children.Add(subtitle);
@@ -77,20 +77,24 @@ internal sealed class Dashboard : Window
         if (cancelButton.IsKeyboardFocused && key is Key.Space or Key.Enter) { CancelRecording(true); return; }
         if (key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin) return;
         var modifiers = Keyboard.Modifiers;
-        if (key != Key.PrintScreen && key is not (>= Key.F1 and <= Key.F24) && (modifiers & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Windows)) == 0)
-        { SetStatus("Use Print Screen, a function key, or include Ctrl, Alt or Windows."); return; }
+        if (!IsSupportedShortcut(key, modifiers))
+        { SetStatus("Use Print Screen, Scroll Lock, a function key, or include Ctrl, Alt or Windows."); return; }
         uint flags = 0;
         if (modifiers.HasFlag(ModifierKeys.Alt)) flags |= 1;
         if (modifiers.HasFlag(ModifierKeys.Control)) flags |= 2;
         if (modifiers.HasFlag(ModifierKeys.Shift)) flags |= 4;
         if (modifiers.HasFlag(ModifierKeys.Windows)) flags |= 8;
-        string label = (flags == 0 ? "" : modifiers.ToString().Replace(", ", " + ") + " + ") + (key == Key.PrintScreen ? "Print Screen" : key.ToString());
+        string label = (flags == 0 ? "" : modifiers.ToString().Replace(", ", " + ") + " + ") + (key == Key.PrintScreen ? "Print Screen" : key == Key.Scroll ? "Scroll Lock" : key.ToString());
         uint virtualKey = (uint)KeyInterop.VirtualKeyFromKey(key);
         bool unchanged = app.Preferences.Modifiers == flags && app.Preferences.Key == virtualKey;
         if (!app.ChangeShortcut(flags, virtualKey, label)) { SetStatus("Those keys are in use. Try another shortcut, or cancel to keep your previous keys."); return; }
         CancelRecording();
         SetStatus((unchanged ? "Shortcut unchanged. " : "Shortcut ready. ") + app.Preferences.ShortcutLabel + " captures from any app.");
     }
+    internal static bool IsSupportedShortcut(Key key, ModifierKeys modifiers) =>
+        key is Key.PrintScreen or Key.Scroll or (>= Key.F1 and <= Key.F24) ||
+        (modifiers & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Windows)) != 0;
+
     private void CancelRecording(bool announce = false)
     {
         bool wasRecording = recording; recording = false; app.RecordingShortcut = false; cancelButton.Visibility = Visibility.Collapsed;

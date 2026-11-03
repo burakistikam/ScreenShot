@@ -13,6 +13,14 @@ internal static class EditorBehaviorTests
     private const BindingFlags Private=BindingFlags.Instance|BindingFlags.NonPublic;
     internal static void Run(Action<string,Action> check,BitmapSource source)
     {
+        check("mouse-mapped Scroll Lock is accepted without allowing plain typing keys",()=>{
+            Require(Dashboard.IsSupportedShortcut(Key.Scroll,ModifierKeys.None),"Scroll Lock rejected");
+            Require(Dashboard.IsSupportedShortcut(Key.PrintScreen,ModifierKeys.None),"Print Screen rejected");
+            Require(Dashboard.IsSupportedShortcut(Key.F12,ModifierKeys.None),"Function key rejected");
+            Require(!Dashboard.IsSupportedShortcut(Key.O,ModifierKeys.None),"Plain typing key accepted");
+            Require(!Dashboard.IsSupportedShortcut(Key.O,ModifierKeys.Shift),"Shift typing key accepted");
+            Require(Dashboard.IsSupportedShortcut(Key.O,ModifierKeys.Control|ModifierKeys.Alt),"Modified key rejected");
+        });
         check("move tool does not select empty interior of outlined shapes",()=>{
             var mark=new Mark(Guid.NewGuid(),Tool.Rectangle,new[]{new Pt(10,10),new Pt(100,100)},"#FFFFFF",3,"");
             Require(!MarkRenderer.HitTest(mark,new Pt(50,50)),"Empty rectangle center selected the outline");
