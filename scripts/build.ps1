@@ -18,6 +18,6 @@ try {
         Copy-Item README.md artifacts/win-x64/README.md
         New-Item -ItemType Directory -Force artifacts/win-x64/docs/images | Out-Null
         Copy-Item docs/images/*.png artifacts/win-x64/docs/images/
-        Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/ScreenShot-0.3.2-win-x64.zip -Force
+        Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/ScreenShot-0.3.3-win-x64.zip -Force
     }
 } finally {Pop-Location}

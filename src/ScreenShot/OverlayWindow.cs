@@ -24,12 +24,14 @@ internal sealed class OverlayWindow : Window
     private readonly EditorSurface surface;
     private readonly Border toolbar;
     private readonly TextBlock hint;
-    private readonly Dictionary<Tool, Button> toolButtons = new();
+    private readonly Dictionary<Tool, SelectionButton> toolButtons = new();
     private readonly Button undoButton, redoButton;
     private readonly ComboBox widthPicker;
     private readonly Button colorButton;
-    private readonly Dictionary<string,Button> swatches = new();
-    private readonly TextBlock toolHint = new() { FontSize=11,Foreground=Dashboard.Brush("#9FB0C4"),TextWrapping=TextWrapping.Wrap,Margin=new Thickness(6,8,6,2) };
+    private readonly Dictionary<string,SelectionButton> swatches = new();
+    private readonly WrapPanel styleRow;
+    private readonly TextBlock sizeLabel;
+    private bool textSizeMode;
     private bool syncingStyle;
     private Tool tool = Tool.Arrow;
     private string color = "#FF4D67";
@@ -60,35 +62,38 @@ internal sealed class OverlayWindow : Window
         var tools = new WrapPanel();
         foreach (var (value, label, key) in new[] { (Tool.Select,"Move","V"), (Tool.Arrow,"Arrow","A"), (Tool.Pen,"Pen","P"), (Tool.Line,"Line","L"), (Tool.Rectangle,"Box","R"), (Tool.Highlight,"Highlight","H"), (Tool.Text,"Text","T") })
         {
-            var button = IconButton(value.ToString(),label,() => SetTool(value)); button.ToolTip = $"{label} ({key})";
-            AutomationProperties.SetHelpText(button,value==Tool.Select?"Select an annotation to move it; drag empty space to move the crop":label);
-            toolButtons[value] = button; tools.Children.Add(button);
+            var button = new SelectionButton { Content=EditorIcons.Label(value.ToString(),""), Padding=new Thickness(8), MinWidth=34, MinHeight=34, Margin=new Thickness(2), ToolTip=$"{label} ({key})" };
+            AutomationProperties.SetName(button,label);
+            AutomationProperties.SetHelpText(button,value==Tool.Select?"Select a mark to move it; drag empty space to move the crop":label);
+            button.Click += (_,_) => SetTool(value);
+            toolButtons[value]=button; tools.Children.Add(button);
         }
+        tools.Children.Add(new Border { Width=1, Height=22, Margin=new Thickness(7,0,7,0), Background=Dashboard.Brush("#344554") });
+        undoButton = IconButton("Undo","", () => Undo(false)); undoButton.ToolTip = "Undo (Ctrl+Z)"; tools.Children.Add(undoButton);
+        redoButton = IconButton("Redo","", () => Undo(true)); redoButton.ToolTip = "Redo (Ctrl+Y)"; tools.Children.Add(redoButton);
         rows.Children.Add(tools);
-        rows.Children.Add(new Border{Height=1,Background=Dashboard.Brush("#2C3D4C"),Margin=new Thickness(6,8,6,8)});
-        var styleRow=new WrapPanel();
-        foreach(var shade in new[]{"#FF4D67","#FBBF24","#34D399","#38BDF8","#A78BFA","#FFFFFF","#172233"})
+        styleRow=new WrapPanel { Margin=new Thickness(2,5,2,5) };
+        foreach(var (shade,name) in new[]{("#FF4D67","Red"),("#FBBF24","Yellow"),("#34D399","Green"),("#38BDF8","Blue"),("#A78BFA","Purple"),("#FFFFFF","White"),("#172233","Dark")})
         {
-            var swatch=MakeButton("",()=>SetColor(shade));swatch.Width=26;swatch.Height=26;swatch.MinHeight=26;swatch.Padding=new Thickness(0);swatch.Margin=new Thickness(4,5,4,5);swatch.Background=Dashboard.Brush(shade);swatch.ToolTip="Color "+shade;
-            AutomationProperties.SetName(swatch,"Color "+shade);swatches[shade]=swatch;styleRow.Children.Add(swatch);
+            var swatch=new SelectionButton { Content="",Width=24,Height=26,MinHeight=26,Padding=new Thickness(0),Margin=new Thickness(2,4,2,4),Background=Dashboard.Brush(shade),ToolTip=name };
+            swatch.Click += (_,_) => SetColor(shade);
+            AutomationProperties.SetName(swatch,name+" color");swatches[shade]=swatch;styleRow.Children.Add(swatch);
         }
-        colorButton = MakeButton("More…", ChooseColor);colorButton.ToolTip="Choose a custom color";styleRow.Children.Add(colorButton);
-        styleRow.Children.Add(new TextBlock{Text="Width",FontSize=11,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(12,0,4,0)});
-        widthPicker = new ComboBox { Width = 62, Margin = new Thickness(4), VerticalContentAlignment = VerticalAlignment.Center, ToolTip = "Line width / text size",MinHeight=30 };
-        AutomationProperties.SetName(widthPicker,"Stroke width");
+        colorButton = MakeButton("…", ChooseColor);colorButton.ToolTip="Custom color";AutomationProperties.SetName(colorButton,"Custom color");styleRow.Children.Add(colorButton);
+        sizeLabel=new TextBlock { Text="Thickness",FontSize=12,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(10,0,3,0) };styleRow.Children.Add(sizeLabel);
+        widthPicker = new ComboBox { Width=66,Margin=new Thickness(3),VerticalContentAlignment=VerticalAlignment.Center,MinHeight=30,SelectedValuePath="Tag" };
         var pickerTextStyle=new Style(typeof(TextBlock));pickerTextStyle.Setters.Add(new Setter(TextBlock.ForegroundProperty,Dashboard.Brush("#172233")));widthPicker.Resources.Add(typeof(TextBlock),pickerTextStyle);
-        foreach (int width in new[] { 2, 3, 5, 8, 12 }) widthPicker.Items.Add(width);
-        widthPicker.SelectedItem = 3; widthPicker.SelectionChanged += (_, _) => { if (!syncingStyle && widthPicker.SelectedItem is int n) { CommitText();strokeWidth = n; ApplyStyle(width:n); } };styleRow.Children.Add(widthPicker);rows.Children.Add(styleRow);
-        var actions = new WrapPanel { Margin=new Thickness(0,7,0,0) };
-        undoButton = IconButton("Undo","", () => Undo(false)); undoButton.ToolTip = "Undo (Ctrl+Z)"; actions.Children.Add(undoButton);
-        redoButton = IconButton("Redo","", () => Undo(true)); redoButton.ToolTip = "Redo (Ctrl+Y)"; actions.Children.Add(redoButton);
-        actions.Children.Add(IconButton("Crop","Reselect", Reselect));
-        actions.Children.Add(IconButton("Copy","Copy", () => _ = CopyAsync()));
-        var save = IconButton("Save","Save…", Save); save.Background = Dashboard.Brush("#0F766E");save.ToolTip="Save image (Ctrl+S)";actions.Children.Add(save);
-        actions.Children.Add(IconButton("Close","", Close));
-        rows.Children.Add(actions);
-        rows.Children.Add(toolHint);
-        toolbar = new Border { Child = rows, Background = Dashboard.Brush("#111E2B"),BorderBrush=Dashboard.Brush("#344554"),BorderThickness=new Thickness(1), CornerRadius = new CornerRadius(12), Padding = new Thickness(10), Visibility = Visibility.Collapsed };
+        widthPicker.SelectionChanged += (_,_) => { if(!syncingStyle && widthPicker.SelectedValue is double n) { CommitText();strokeWidth=n;ApplyStyle(width:n); } };
+        styleRow.Children.Add(widthPicker);rows.Children.Add(styleRow);
+        rows.Children.Add(new Border{Height=1,Background=Dashboard.Brush("#2C3D4C"),Margin=new Thickness(2,3,2,5)});
+        var actions = new Grid();actions.ColumnDefinitions.Add(new ColumnDefinition());actions.ColumnDefinitions.Add(new ColumnDefinition { Width=GridLength.Auto });
+        var crop=IconButton("Crop","Reselect",Reselect);crop.HorizontalAlignment=HorizontalAlignment.Left;actions.Children.Add(crop);
+        var finish=new StackPanel { Orientation=Orientation.Horizontal };
+        var copy=IconButton("Copy","Copy",()=>_=CopyAsync());copy.ToolTip="Copy image (Ctrl+C)";copy.Background=Dashboard.Brush("#0F766E");finish.Children.Add(copy);
+        var save=IconButton("Save","Save…",Save);save.ToolTip="Save image (Ctrl+S)";finish.Children.Add(save);
+        var close=IconButton("Close","",Close);close.ToolTip="Cancel capture (Esc)";finish.Children.Add(close);
+        Grid.SetColumn(finish,1);actions.Children.Add(finish);rows.Children.Add(actions);
+        toolbar = new Border { Child=rows,Background=Dashboard.Brush("#111E2B"),BorderBrush=Dashboard.Brush("#344554"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10),Padding=new Thickness(8),Visibility=Visibility.Collapsed };
         canvas.Children.Add(toolbar);
         Content = new Viewbox { Stretch = Stretch.Fill, Child = canvas };
         SourceInitialized += (_, _) =>
@@ -116,7 +121,7 @@ internal sealed class OverlayWindow : Window
     }
     private static Button MakeButton(string label, Action action)
     {
-        var button = new Button { Content = label, Padding = new Thickness(9, 9, 9, 9), FontSize = 12, Focusable = true };
+        var button = new Button { Content = label, Padding = new Thickness(8), FontSize = 12, MinHeight=34, Margin=new Thickness(2), Focusable = true };
         AutomationProperties.SetName(button,label);
         button.Click += (_, _) => action(); return button;
     }
@@ -129,7 +134,7 @@ internal sealed class OverlayWindow : Window
     private void SetTool(Tool value)
     {
         CommitText(); tool = value; surface.Selected = null;
-        foreach (var pair in toolButtons){pair.Value.Background = Dashboard.Brush(pair.Key == value ? "#0F766E" : "#203140");pair.Value.BorderBrush=Dashboard.Brush(pair.Key==value?"#5EEAD4":"#203140");}
+        foreach (var pair in toolButtons){pair.Value.IsSelected=pair.Key==value;pair.Value.Background = Dashboard.Brush(pair.Key == value ? "#0F766E" : "#203140");pair.Value.BorderBrush=Dashboard.Brush(pair.Key==value?"#5EEAD4":"#203140");}
         surface.Cursor = value == Tool.Select ? Cursors.Arrow : value == Tool.Text ? Cursors.IBeam : Cursors.Cross;
         Refresh();
     }
@@ -212,8 +217,7 @@ internal sealed class OverlayWindow : Window
     private void Refresh(bool layout = true)
     {
         surface.InvalidateVisual(); undoButton.IsEnabled = surface.Document.CanUndo; redoButton.IsEnabled = surface.Document.CanRedo;
-        foreach(var entry in swatches){entry.Value.BorderThickness=new Thickness(entry.Key==color?2:1);entry.Value.BorderBrush=entry.Key==color?Brushes.White:Dashboard.Brush("#526272");}
-        toolHint.Text=surface.Selected!=null?"Annotation selected · Drag to move · Delete to remove · F2 edits text":tool switch{Tool.Select=>"Click a mark to select it. Drag empty space to move the crop.",Tool.Text=>"Click to write. Click existing text to edit it.",Tool.Highlight=>"Drag over an area to highlight it.",_=>"Drag to draw · V selects marks · Ctrl+Z undoes the last change"};
+        UpdateStyleControls();
         hint.Text = surface.HasSelection
             ? $"{Math.Ceiling(surface.Area.Width):0} × {Math.Ceiling(surface.Area.Height):0} px   •   Ctrl+C copy   •   Ctrl+S save   •   Esc cancel"
             : "Drag to select an area  •  Esc to cancel";
@@ -225,7 +229,7 @@ internal sealed class OverlayWindow : Window
         var bounds = screen.Bounds;
         double minX=Math.Max(0,bounds.Left-frame.Left), minY=Math.Max(0,bounds.Top-frame.Top);
         double maxX=Math.Min(surface.Width,bounds.Right-frame.Left), maxY=Math.Min(surface.Height,bounds.Bottom-frame.Top);
-        toolbar.Width=Math.Max(240,Math.Min(600,maxX-minX-24));
+        toolbar.Width=Math.Max(240,Math.Min(440,maxX-minX-24));
         toolbar.Measure(new Size(double.PositiveInfinity,double.PositiveInfinity));
         double tw=toolbar.DesiredSize.Width, th=toolbar.DesiredSize.Height;
         double x=Math.Clamp(surface.Area.Right-tw,minX,Math.Max(minX,maxX-tw));
@@ -238,6 +242,7 @@ internal sealed class OverlayWindow : Window
     }
     private void BeginText(Pt point, Mark? existing)
     {
+        if (existing != null) SyncStyle(existing);
         editingMark = existing ?? new Mark(Guid.NewGuid(),Tool.Text,new[] {point},color,strokeWidth,"",Math.Max(40,Math.Min(480,surface.Area.Right-point.X)));
         textEditor = new TextBox { Text = existing?.Text ?? "", FontFamily = new FontFamily("Segoe UI"), FontSize = 18+editingMark.Width*3,
             Foreground = Dashboard.Brush(editingMark.Color), Background = Dashboard.Brush("#F8FAFC"), Padding = new Thickness(3),
@@ -248,6 +253,7 @@ internal sealed class OverlayWindow : Window
         var textActions=new StackPanel{Orientation=Orientation.Horizontal};textActions.Children.Add(MakeButton("Apply ↵",()=>CommitText()));textActions.Children.Add(MakeButton("Cancel",()=>CommitText(true)));
         textRows.Children.Add(textActions);textPanel=new Border{Child=textRows,Background=Dashboard.Brush("#111E2B"),CornerRadius=new CornerRadius(6)};
         canvas.Children.Add(textPanel);PositionTextPanel();textEditor.TextChanged+=(_,_)=>PositionTextPanel();
+        UpdateStyleControls();
         textEditor.Focus(); textEditor.SelectAll(); hint.Text = "Enter to apply  •  Shift+Enter for a new line  •  Esc to discard";
     }
     private void PositionTextPanel()
@@ -286,7 +292,29 @@ internal sealed class OverlayWindow : Window
         SetColor($"#{picker.Color.R:X2}{picker.Color.G:X2}{picker.Color.B:X2}");
     }
     private void SetColor(string value){CommitText();color=value;ApplyStyle(color:value);}
-    private void SyncStyle(Mark? mark){if(mark==null)return;syncingStyle=true;try{color=mark.Color;strokeWidth=mark.Width;widthPicker.SelectedItem=(int)mark.Width;}finally{syncingStyle=false;}}
+    private void SyncStyle(Mark? mark){if(mark==null)return;syncingStyle=true;try{color=mark.Color;strokeWidth=mark.Width;}finally{syncingStyle=false;}}
+    private void UpdateStyleControls()
+    {
+        foreach(var entry in swatches){entry.Value.IsSelected=entry.Key==color;entry.Value.BorderThickness=new Thickness(entry.Key==color?2:1);entry.Value.BorderBrush=entry.Key==color?Brushes.White:Dashboard.Brush("#526272");}
+        var selected=surface.Selected is Guid id ? surface.Document.Items.FirstOrDefault(m=>m.Id==id) : null;
+        var effectiveTool=editingMark?.Tool ?? selected?.Tool ?? tool;
+        styleRow.Visibility=effectiveTool==Tool.Select ? Visibility.Collapsed : Visibility.Visible;
+        bool showSize=effectiveTool!=Tool.Highlight;
+        sizeLabel.Visibility=widthPicker.Visibility=showSize ? Visibility.Visible : Visibility.Collapsed;
+        bool isText=effectiveTool==Tool.Text;
+        syncingStyle=true;
+        try {
+            if(widthPicker.Items.Count==0 || textSizeMode!=isText) {
+                textSizeMode=isText;widthPicker.Items.Clear();
+                foreach(double width in new double[]{2,3,5,8,12})
+                    widthPicker.Items.Add(new ComboBoxItem { Content=new TextBlock { Text=$"{(isText?18+width*3:width):0.#} px",Foreground=Dashboard.Brush("#172233") },Tag=width });
+            }
+            sizeLabel.Text=isText ? "Font size" : "Thickness";
+            widthPicker.ToolTip=isText ? "Font size in pixels" : "Stroke thickness in pixels";
+            AutomationProperties.SetName(widthPicker,isText ? "Font size" : "Stroke thickness");
+            widthPicker.SelectedValue=strokeWidth;
+        } finally { syncingStyle=false; }
+    }
     private void ApplyStyle(string? color=null,double? width=null)
     {
         if (surface.Selected is Guid id)

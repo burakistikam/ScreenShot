@@ -5,6 +5,10 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
+using System.Windows.Automation;
+using System.Collections.Generic;
 using ScreenShot;
 using ScreenShot.Core;
 
@@ -13,6 +17,36 @@ internal static class EditorBehaviorTests
     private const BindingFlags Private=BindingFlags.Instance|BindingFlags.NonPublic;
     internal static void Run(Action<string,Action> check,BitmapSource source)
     {
+        check("contextual style controls expose text pixels and preserve annotation color",()=>{
+            var window=new OverlayWindow(new CaptureFrame(source,0,0),new Settings());
+            try {
+                var surface=Field<EditorSurface>(window,"surface");surface.Area=new Box(0,0,200,140);surface.HasSelection=true;
+                Call(window,"SetTool",Tool.Select);
+                Require(Field<WrapPanel>(window,"styleRow").Visibility==Visibility.Collapsed,"Move without selection shows irrelevant styles");
+                Call(window,"SetTool",Tool.Highlight);
+                Require(Field<ComboBox>(window,"widthPicker").Visibility==Visibility.Collapsed,"Highlight exposes unused width");
+                Call(window,"SetTool",Tool.Text);
+                var picker=Field<ComboBox>(window,"widthPicker");
+                Require(Field<TextBlock>(window,"sizeLabel").Text=="Font size","Text shows stroke label");
+                Require(((TextBlock)((ComboBoxItem)picker.SelectedItem).Content).Text=="27 px","Actual font size not shown");
+                var mark=new Mark(Guid.NewGuid(),Tool.Text,new[]{new Pt(10,10)},"#38BDF8",3,"Text",100);surface.Document.Add(mark);surface.Selected=mark.Id;
+                picker.SelectedValue=5.0;
+                Require(surface.Document.Items[0].Width==5&&surface.Document.Items[0].Color=="#38BDF8","Size edit changed unrelated style");
+                Require(((TextBlock)((ComboBoxItem)picker.SelectedItem).Content).Text=="33 px","Font size label does not match renderer");
+                Call(window,"SetTool",Tool.Pen);
+                Require(Field<TextBlock>(window,"sizeLabel").Text=="Thickness","Pen kept text label");
+                var buttons=Field<Dictionary<Tool,SelectionButton>>(window,"toolButtons");
+                var peer=UIElementAutomationPeer.CreatePeerForElement(buttons[Tool.Pen]);
+                Require(((IToggleProvider)peer.GetPattern(PatternInterface.Toggle)).ToggleState==ToggleState.On,"Selected tool not exposed");
+                Require(!buttons[Tool.Text].IsSelected,"Old tool remains selected");
+                var existing=mark with { Width=8,Color="#A78BFA" };
+                Call(window,"BeginText",existing.Points[0],existing);
+                Require(((TextBlock)((ComboBoxItem)picker.SelectedItem).Content).Text=="42 px","Direct text edit shows previous tool size");
+                Require(Field<string>(window,"color")==existing.Color,"Direct text edit shows previous tool color");
+                Require(Field<Dictionary<string,SelectionButton>>(window,"swatches")[existing.Color].IsSelected,"Direct text edit does not update selected swatch");
+                Call(window,"CommitText",true);
+            } finally { window.Close(); }
+        });
         check("single keys and combinations are accepted while recorder control keys stay reserved",()=>{
             Require(Dashboard.IsSupportedShortcut(Key.Scroll,ModifierKeys.None),"Scroll Lock rejected");
             Require(Dashboard.IsSupportedShortcut(Key.PrintScreen,ModifierKeys.None),"Print Screen rejected");

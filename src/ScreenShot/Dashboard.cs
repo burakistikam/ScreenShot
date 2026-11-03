@@ -14,37 +14,37 @@ internal sealed class Dashboard : Window
     private readonly Button shortcutButton = new();
     private readonly Button cancelButton = new() { Content = "Cancel", Visibility = Visibility.Collapsed, Margin = new Thickness(8, 0, 0, 0) };
     private readonly TextBlock shortcutHint = new();
-    private readonly TextBlock captureHint = new();
+    private readonly TextBlock shortcutLabel = new();
     private bool recording;
 
     internal Dashboard(App app)
     {
         this.app = app;
-        Title = "ScreenShot"; Width = 520; Height = 430; MinWidth = 440; MinHeight = 380;
+        Title = "ScreenShot"; Width = 480; Height = 360; MinWidth = 400; MinHeight = 320;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         Background = Brush("#0D1520"); FontFamily = new FontFamily("Segoe UI");
-        var root = new StackPanel { Margin = new Thickness(24) };
-        var heading = new DockPanel { Margin = new Thickness(0, 0, 0, 5) };
-        var version = Text("v0.3.2", 11, "#9AACBE"); version.VerticalAlignment = VerticalAlignment.Center;
+        var root = new StackPanel { Margin = new Thickness(22) };
+        var heading = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
+        var version = Text("v0.3.3", 11, "#9AACBE"); version.VerticalAlignment = VerticalAlignment.Center;
         DockPanel.SetDock(version, Dock.Right); heading.Children.Add(version);
         heading.Children.Add(Text("ScreenShot", 24, "#F1F5F9", FontWeights.SemiBold)); root.Children.Add(heading);
-        var subtitle = Text("Select an area, annotate, then copy or save.", 13, "#9FB0C4"); subtitle.Margin = new Thickness(0, 0, 0, 18); root.Children.Add(subtitle);
+        var subtitle = Text("Capture and annotate any part of your screen.", 13, "#9FB0C4"); subtitle.Margin = new Thickness(0, 0, 0, 14); root.Children.Add(subtitle);
 
         var capture = new Button { Content = "Capture screenshot", Background = Brush("#72E0CD"), Foreground = Brush("#092B2B"), FontWeight = FontWeights.SemiBold, FontSize = 15, Padding = new Thickness(19, 13, 19, 13), HorizontalAlignment = HorizontalAlignment.Stretch };
         capture.Click += async (_, _) => { CancelRecording(); await app.CaptureAsync(); };
         AutomationProperties.SetHelpText(capture, "Select an area of your screen to capture and annotate."); root.Children.Add(capture);
-        captureHint.FontSize = 11; captureHint.Foreground = Brush("#AFC0D0"); captureHint.Margin = new Thickness(0, 8, 0, 18); captureHint.TextWrapping = TextWrapping.Wrap; root.Children.Add(captureHint);
 
-        var shortcutCard = new StackPanel { Margin = new Thickness(19, 16, 19, 16) };
-        shortcutCard.Children.Add(Text("Shortcut", 15, "#EDF3F9", FontWeights.SemiBold));
-        shortcutHint.Text = "Use it from any app. Click the keys below to change it."; shortcutHint.TextWrapping = TextWrapping.Wrap; shortcutHint.FontSize = 12; shortcutHint.Foreground = Brush("#9FB0C4"); shortcutHint.Margin = new Thickness(0, 6, 0, 12); shortcutCard.Children.Add(shortcutHint);
-        var shortcutRow = new WrapPanel();
-        shortcutButton.Content = app.Preferences.ShortcutLabel; shortcutButton.MinWidth = 156; shortcutButton.Margin = new Thickness(0); shortcutButton.Padding = new Thickness(16, 10, 16, 10); shortcutButton.Click += (_, _) => BeginRecording();
+        var shortcutCard = new StackPanel { Margin = new Thickness(14, 11, 14, 11) };
+        shortcutCard.Children.Add(Text("Shortcut", 13, "#9FB0C4", FontWeights.SemiBold));
+        shortcutHint.Text = "Press a key or combination. Esc cancels."; shortcutHint.TextWrapping = TextWrapping.Wrap; shortcutHint.FontSize = 12; shortcutHint.Foreground = Brush("#9FB0C4"); shortcutHint.Margin = new Thickness(0, 6, 0, 0); shortcutHint.Visibility = Visibility.Collapsed;
+        shortcutLabel.TextWrapping = TextWrapping.Wrap; shortcutLabel.FontSize = 14; shortcutLabel.FontWeight = FontWeights.SemiBold; shortcutLabel.Foreground = Brush("#EDF3F9"); shortcutLabel.VerticalAlignment = VerticalAlignment.Center; shortcutLabel.Margin = new Thickness(0, 0, 12, 0);
+        var shortcutRow = new DockPanel();
+        shortcutButton.Content = "Change"; shortcutButton.MinWidth = 78; shortcutButton.Margin = new Thickness(0); shortcutButton.Padding = new Thickness(13, 7, 13, 7); shortcutButton.Click += (_, _) => BeginRecording();
         AutomationProperties.SetName(shortcutButton, "Change capture shortcut");
-        cancelButton.Click += (_, _) => CancelRecording(true); shortcutRow.Children.Add(shortcutButton); shortcutRow.Children.Add(cancelButton); shortcutCard.Children.Add(shortcutRow);
+        cancelButton.Click += (_, _) => CancelRecording(true); DockPanel.SetDock(shortcutButton, Dock.Right); DockPanel.SetDock(cancelButton, Dock.Right); shortcutRow.Children.Add(shortcutButton); shortcutRow.Children.Add(cancelButton); shortcutRow.Children.Add(shortcutLabel); shortcutCard.Children.Add(shortcutRow); shortcutCard.Children.Add(shortcutHint);
         root.Children.Add(new Border { Background = Brush("#111E2B"), BorderBrush = Brush("#263747"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Child = shortcutCard });
-        status.Margin = new Thickness(0, 14, 0, 0); AutomationProperties.SetLiveSetting(status, AutomationLiveSetting.Polite); root.Children.Add(status);
-        var footer = Text("Runs in the tray when closed. Right-click the tray icon to quit.", 11, "#9AACBE"); footer.Margin = new Thickness(0, 14, 0, 0); root.Children.Add(footer);
+        status.Margin = new Thickness(0, 11, 0, 0); AutomationProperties.SetLiveSetting(status, AutomationLiveSetting.Polite); root.Children.Add(status);
+        var footer = Text("Closing keeps ScreenShot in the tray.", 11, "#9AACBE"); footer.Margin = new Thickness(0, 10, 0, 0); root.Children.Add(footer);
         Content = new ScrollViewer { Content = root, Background = Background, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         UpdateShortcutLabel();
         SetStatus(app.ShortcutStatus.Length == 0 ? "Ready to capture." : app.ShortcutStatus);
@@ -57,14 +57,13 @@ internal sealed class Dashboard : Window
     internal void SetStatus(string text) => status.Text = text;
     private void BeginRecording()
     {
-        recording = true; app.RecordingShortcut = true; shortcutButton.Content = "Press your keys…"; cancelButton.Visibility = Visibility.Visible;
-        shortcutHint.Text = "Press a key or combination. Single keys also capture while typing in other apps. Esc cancels.";
+        recording = true; app.RecordingShortcut = true; shortcutButton.Content = "Press a key…"; cancelButton.Visibility = Visibility.Visible; shortcutHint.Visibility = Visibility.Visible;
         SetStatus("Listening for your shortcut…"); shortcutButton.Focus();
     }
     private void UpdateShortcutLabel()
     {
-        shortcutButton.Content = app.Preferences.ShortcutLabel;
-        captureHint.Text = "or press " + app.Preferences.ShortcutLabel;
+        shortcutButton.Content = "Change";
+        shortcutLabel.Text = app.Preferences.ShortcutLabel;
     }
     private void RecordShortcut(object sender, KeyEventArgs e)
     {
@@ -90,7 +89,8 @@ internal sealed class Dashboard : Window
         bool unchanged = app.Preferences.Modifiers == flags && app.Preferences.Key == virtualKey;
         if (!app.ChangeShortcut(flags, virtualKey, label)) { SetStatus("Those keys are in use. Try another shortcut, or cancel to keep your previous keys."); return; }
         CancelRecording();
-        SetStatus((unchanged ? "Shortcut unchanged. " : "Shortcut ready. ") + app.Preferences.ShortcutLabel + " captures from any app.");
+        string typingWarning = flags == 0 && IsLetterOrDigit(key) ? " This key may trigger while typing." : "";
+        SetStatus((unchanged ? "Shortcut unchanged. " : "Shortcut ready. ") + app.Preferences.ShortcutLabel + " captures from any app." + typingWarning);
     }
     internal static bool IsSupportedShortcut(Key key, ModifierKeys modifiers) =>
         key is not (Key.None or Key.Escape or Key.System or Key.ImeProcessed or Key.DeadCharProcessed
@@ -98,6 +98,14 @@ internal sealed class Dashboard : Window
             or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin) &&
         !(key == Key.Tab && (modifiers & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Windows)) == 0) &&
         KeyInterop.VirtualKeyFromKey(key) != 0;
+
+    private static bool IsLetterOrDigit(Key key)
+    {
+        int value = (int)key;
+        return value >= (int)Key.A && value <= (int)Key.Z ||
+               value >= (int)Key.D0 && value <= (int)Key.D9 ||
+               value >= (int)Key.NumPad0 && value <= (int)Key.NumPad9;
+    }
 
     internal void ConfirmCurrentShortcut()
     {
@@ -109,7 +117,7 @@ internal sealed class Dashboard : Window
     private void CancelRecording(bool announce = false)
     {
         bool wasRecording = recording; recording = false; app.RecordingShortcut = false; cancelButton.Visibility = Visibility.Collapsed;
-        shortcutHint.Text = "Use it from any app. Click the keys below to change it."; UpdateShortcutLabel();
+        shortcutHint.Visibility = Visibility.Collapsed; UpdateShortcutLabel();
         if (announce && wasRecording) SetStatus("Shortcut change canceled. " + app.Preferences.ShortcutLabel + " is still set.");
     }
     internal static SolidColorBrush Brush(string color) => new((Color)ColorConverter.ConvertFromString(color));

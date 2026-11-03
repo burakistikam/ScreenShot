@@ -105,8 +105,15 @@ internal static class Program
         {
             Directory.CreateDirectory("artifacts/previews");
             var dashboard=new Dashboard(app);
-            Render((FrameworkElement)dashboard.Content,840,720,"artifacts/previews/dashboard.png");
-            Render((FrameworkElement)dashboard.Content,640,600,"artifacts/previews/dashboard-small.png");
+            Render((FrameworkElement)dashboard.Content,464,321,"artifacts/previews/dashboard.png");
+            Render((FrameworkElement)dashboard.Content,384,281,"artifacts/previews/dashboard-small.png");
+            app.Preferences.ShortcutLabel="Alt + Control + Shift + Windows + NumPad9";
+            typeof(Dashboard).GetMethod("UpdateShortcutLabel",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(dashboard,null);
+            Render((FrameworkElement)dashboard.Content,384,281,"artifacts/previews/dashboard-long-shortcut.png");
+            app.Preferences.ShortcutLabel="Print Screen";
+            typeof(Dashboard).GetMethod("UpdateShortcutLabel",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(dashboard,null);
+            typeof(Dashboard).GetMethod("BeginRecording",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(dashboard,null);
+            Render((FrameworkElement)dashboard.Content,384,281,"artifacts/previews/dashboard-recording.png");
             dashboard.Close();
             var fixture=new DrawingVisual();using(var dc=fixture.RenderOpen()){
                 dc.DrawRectangle(Dashboard.Brush("#EDF2F7"),null,new Rect(0,0,1280,800));

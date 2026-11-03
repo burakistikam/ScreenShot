@@ -2,7 +2,7 @@
 
 A small, local-first screenshot and annotation app for Windows, inspired by Lightshot's quick capture workflow. No account, uploads, telemetry, or screenshot server.
 
-**v0.3.2 — UX preview.** Windows x64. The portable build includes .NET; extract the ZIP and run `ScreenShot.exe`.
+**v0.3.3 — UX preview.** Windows x64. The portable build includes .NET; extract the ZIP and run `ScreenShot.exe`.
 
 ![Editor preview using synthetic sample content](docs/images/editor.png)
 
@@ -25,7 +25,7 @@ Install the **.NET 10 SDK** on Windows. Then:
 
 ```powershell
 ./scripts/build.ps1             # release build + core and WPF rendering tests
-./scripts/build.ps1 -Publish    # also creates artifacts/ScreenShot-0.3.2-win-x64.zip
+./scripts/build.ps1 -Publish    # also creates artifacts/ScreenShot-0.3.3-win-x64.zip
 dotnet run --project src/ScreenShot
 ```
 
@@ -43,8 +43,8 @@ This briefly opens a synthetic overlay and verifies its physical HWND bounds. Pr
 
 Automated coverage includes reversed/clamped selections, small selections, movement, immutable undo/redo history, independent style changes, capture-loss cancellation, text wrapping (including unbroken URLs), all tool rendering, crop pixel/dimension checks, and PNG/JPEG round trips. A real HWND positioning smoke check passed on the development machine; the app launched and exposed its dashboard controls.
 
-Live desktop testing verified area selection, arrow and text annotation, undo/redo, and PNG export on the capture-fix build. The 0.3.2 installed build passed live shortcut recording checks: standalone A, re-recording the existing A binding without capture, then switching to Scroll Lock. Clipboard acceptance and physical Print Screen forwarding over RDP remain open. Actual multi-monitor mixed-DPI operation, clipboard contention, and HDR hardware have **not** been manually qualified. The current capture backend is SDR GDI; protected/video surfaces and secure desktops may appear black or fail. The overlay cancels if the display configuration changes. This first build is unsigned.
+Live desktop testing verified area selection, arrow and text annotation, undo/redo, and PNG export on the capture-fix build. The 0.3.2 installed build passed live shortcut recording checks: standalone A, re-recording the existing A binding without capture, then switching to Scroll Lock. Clipboard acceptance and physical Print Screen forwarding over RDP remain open. For 0.3.3, contextual controls and selection semantics passed regression checks; rendered normal/small/recording layouts were inspected and installed dashboard controls were read back. The final capture input retry was blocked by Windows input access. Actual multi-monitor mixed-DPI operation, clipboard contention, and HDR hardware have **not** been manually qualified. The current capture backend is SDR GDI; protected/video surfaces and secure desktops may appear black or fail. The overlay cancels if the display configuration changes. This first build is unsigned.
 
-The editor has vector icons, quick color swatches and tool keys: **V** Move, **A** Arrow, **P** Pen, **L** Line, **R** Box, **H** Highlight, **T** Text. Reopening the executable brings the running app forward instead of creating another instance.
+The compact editor shows contextual Thickness or Font size (in pixels), hides unused controls for Move/Highlight, and separates editing from Copy/Save. Tool and color selection states are exposed to assistive technology. The home screen has a compact shortcut row with Change; typing warnings only appear after assigning an unmodified letter or number. The editor has vector icons, quick color swatches and tool keys: **V** Move, **A** Arrow, **P** Pen, **L** Line, **R** Box, **H** Highlight, **T** Text. Reopening the executable brings the running app forward instead of creating another instance.
 
 Screenshots are never uploaded. Link sharing, OCR, scrolling capture, recording, and cloud history are outside this version's scope.
