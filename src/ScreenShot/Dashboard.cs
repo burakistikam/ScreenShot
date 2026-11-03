@@ -25,7 +25,7 @@ internal sealed class Dashboard : Window
         Background = Brush("#0D1520"); FontFamily = new FontFamily("Segoe UI");
         var root = new StackPanel { Margin = new Thickness(24) };
         var heading = new DockPanel { Margin = new Thickness(0, 0, 0, 5) };
-        var version = Text("v0.3.1", 11, "#9AACBE"); version.VerticalAlignment = VerticalAlignment.Center;
+        var version = Text("v0.3.2", 11, "#9AACBE"); version.VerticalAlignment = VerticalAlignment.Center;
         DockPanel.SetDock(version, Dock.Right); heading.Children.Add(version);
         heading.Children.Add(Text("ScreenShot", 24, "#F1F5F9", FontWeights.SemiBold)); root.Children.Add(heading);
         var subtitle = Text("Select an area, annotate, then copy or save.", 13, "#9FB0C4"); subtitle.Margin = new Thickness(0, 0, 0, 18); root.Children.Add(subtitle);
@@ -58,7 +58,7 @@ internal sealed class Dashboard : Window
     private void BeginRecording()
     {
         recording = true; app.RecordingShortcut = true; shortcutButton.Content = "Press your keys…"; cancelButton.Visibility = Visibility.Visible;
-        shortcutHint.Text = "Press a new shortcut. Esc or Cancel keeps your current keys.";
+        shortcutHint.Text = "Press a key or combination. Single keys also capture while typing in other apps. Esc cancels.";
         SetStatus("Listening for your shortcut…"); shortcutButton.Focus();
     }
     private void UpdateShortcutLabel()
@@ -69,6 +69,7 @@ internal sealed class Dashboard : Window
     private void RecordShortcut(object sender, KeyEventArgs e)
     {
         if (!recording) return;
+        if (e.IsRepeat) { e.Handled = true; return; }
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         if (key == Key.Tab && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Windows)) == 0) return;
         e.Handled = true;
@@ -78,7 +79,7 @@ internal sealed class Dashboard : Window
         if (key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin) return;
         var modifiers = Keyboard.Modifiers;
         if (!IsSupportedShortcut(key, modifiers))
-        { SetStatus("Use Print Screen, Scroll Lock, a function key, or include Ctrl, Alt or Windows."); return; }
+        { SetStatus("Press a key, optionally with Ctrl, Alt or Shift. Esc cancels; Tab moves between controls."); return; }
         uint flags = 0;
         if (modifiers.HasFlag(ModifierKeys.Alt)) flags |= 1;
         if (modifiers.HasFlag(ModifierKeys.Control)) flags |= 2;
@@ -92,8 +93,18 @@ internal sealed class Dashboard : Window
         SetStatus((unchanged ? "Shortcut unchanged. " : "Shortcut ready. ") + app.Preferences.ShortcutLabel + " captures from any app.");
     }
     internal static bool IsSupportedShortcut(Key key, ModifierKeys modifiers) =>
-        key is Key.PrintScreen or Key.Scroll or (>= Key.F1 and <= Key.F24) ||
-        (modifiers & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Windows)) != 0;
+        key is not (Key.None or Key.Escape or Key.System or Key.ImeProcessed or Key.DeadCharProcessed
+            or Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt
+            or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin) &&
+        !(key == Key.Tab && (modifiers & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Windows)) == 0) &&
+        KeyInterop.VirtualKeyFromKey(key) != 0;
+
+    internal void ConfirmCurrentShortcut()
+    {
+        if (!recording) return;
+        CancelRecording();
+        SetStatus("Shortcut unchanged. " + app.Preferences.ShortcutLabel + " captures from any app.");
+    }
 
     private void CancelRecording(bool announce = false)
     {

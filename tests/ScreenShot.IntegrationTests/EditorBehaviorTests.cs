@@ -13,12 +13,16 @@ internal static class EditorBehaviorTests
     private const BindingFlags Private=BindingFlags.Instance|BindingFlags.NonPublic;
     internal static void Run(Action<string,Action> check,BitmapSource source)
     {
-        check("mouse-mapped Scroll Lock is accepted without allowing plain typing keys",()=>{
+        check("single keys and combinations are accepted while recorder control keys stay reserved",()=>{
             Require(Dashboard.IsSupportedShortcut(Key.Scroll,ModifierKeys.None),"Scroll Lock rejected");
             Require(Dashboard.IsSupportedShortcut(Key.PrintScreen,ModifierKeys.None),"Print Screen rejected");
             Require(Dashboard.IsSupportedShortcut(Key.F12,ModifierKeys.None),"Function key rejected");
-            Require(!Dashboard.IsSupportedShortcut(Key.O,ModifierKeys.None),"Plain typing key accepted");
-            Require(!Dashboard.IsSupportedShortcut(Key.O,ModifierKeys.Shift),"Shift typing key accepted");
+            Require(Dashboard.IsSupportedShortcut(Key.O,ModifierKeys.None),"Single key rejected");
+            Require(Dashboard.IsSupportedShortcut(Key.O,ModifierKeys.Shift),"Shift key combination rejected");
+            Require(Dashboard.IsSupportedShortcut(Key.NumPad1,ModifierKeys.None),"Numpad key rejected");
+            Require(!Dashboard.IsSupportedShortcut(Key.Escape,ModifierKeys.None),"Cancel key accepted");
+            Require(!Dashboard.IsSupportedShortcut(Key.Tab,ModifierKeys.Shift),"Navigation key accepted");
+            Require(!Dashboard.IsSupportedShortcut(Key.LeftCtrl,ModifierKeys.Control),"Modifier-only accepted");
             Require(Dashboard.IsSupportedShortcut(Key.O,ModifierKeys.Control|ModifierKeys.Alt),"Modified key rejected");
         });
         check("move tool does not select empty interior of outlined shapes",()=>{

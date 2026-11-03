@@ -31,7 +31,7 @@ public partial class App : Application
         activationWait=ThreadPool.RegisterWaitForSingleObject(activation,(_,_)=>Dispatcher.BeginInvoke(ShowDashboard),null,Timeout.Infinite,false);
         Preferences = Settings.Load();
         shortcut = new GlobalShortcut();
-        shortcut.Pressed += () => { if (!RecordingShortcut) _ = CaptureAsync(); };
+        shortcut.Pressed += HandleShortcutPressed;
         if (!shortcut.TrySet(Preferences.Modifiers, Preferences.Key))
         {
             if (shortcut.TrySet(6, 0x53))
@@ -52,6 +52,14 @@ public partial class App : Application
         tray.ContextMenuStrip = menu;
         tray.DoubleClick += (_, _) => Dispatcher.InvokeAsync(ShowDashboard);
         ShowDashboard();
+    }
+
+    internal void HandleShortcutPressed()
+    {
+        // RegisterHotKey consumes the current binding before WPF sees KeyDown.
+        // Re-recording that same binding must finish the recorder, not disappear.
+        if (RecordingShortcut) dashboard?.ConfirmCurrentShortcut();
+        else _ = CaptureAsync();
     }
 
     internal void ShowDashboard()

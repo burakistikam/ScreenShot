@@ -16,10 +16,33 @@ internal static class Program
     private static int failures;
     [STAThread] static int Main(string[] args)
     {
+        var app=new App();app.InitializeComponent();
         var pixels = new byte[200*140*4];
         for(int i=0;i<pixels.Length;i+=4){pixels[i]=90;pixels[i+1]=70;pixels[i+2]=50;pixels[i+3]=255;}
         var source=BitmapSource.Create(200,140,96,96,PixelFormats.Bgra32,null,pixels,800);
         EditorBehaviorTests.Run(Check,source);
+        Check("re-recording the registered global shortcut completes without capture or preference changes",()=>{
+            var dashboard=new Dashboard(app);
+            var flags=BindingFlags.Instance|BindingFlags.NonPublic;
+            var field=typeof(App).GetField("dashboard",flags)!;
+            field.SetValue(app,dashboard);
+            var originalKey=app.Preferences.Key;var originalModifiers=app.Preferences.Modifiers;
+            try {
+                typeof(Dashboard).GetMethod("BeginRecording",flags)!.Invoke(dashboard,null);
+                True(app.RecordingShortcut,"Recorder did not start");
+                app.HandleShortcutPressed();
+                True(!app.RecordingShortcut,"Current global key was ignored by recorder");
+                True(typeof(App).GetField("overlay",flags)!.GetValue(app)==null,"Recording opened a capture overlay");
+                Equal(originalKey,app.Preferences.Key);Equal(originalModifiers,app.Preferences.Modifiers);
+                var status=(System.Windows.Controls.TextBlock)typeof(Dashboard).GetField("status",flags)!.GetValue(dashboard)!;
+                True(status.Text.StartsWith("Shortcut unchanged."),"No unchanged confirmation");
+                typeof(Dashboard).GetMethod("BeginRecording",flags)!.Invoke(dashboard,null);
+                using var keyboardSource=new HwndSource(new HwndSourceParameters("Shortcut cancel test"){ParentWindow=new IntPtr(-3)});
+                dashboard.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,keyboardSource,0,Key.Escape){RoutedEvent=Keyboard.PreviewKeyDownEvent});
+                True(!app.RecordingShortcut,"Escape did not stop recording");
+                Equal(originalKey,app.Preferences.Key);Equal(originalModifiers,app.Preferences.Modifiers);
+            } finally { field.SetValue(app,null);dashboard.Close(); }
+        });
         Check("export crops only selected pixels without overlay dimming or toolbar",()=> {
             var image=MarkRenderer.Export(source,new Box(30,20,100,60),Array.Empty<Mark>());
             Equal(100,image.PixelWidth);Equal(60,image.PixelHeight);
@@ -80,7 +103,6 @@ internal static class Program
         });
         if(Array.IndexOf(args,"--previews")>=0)
         {
-            var app=new App();app.InitializeComponent();
             Directory.CreateDirectory("artifacts/previews");
             var dashboard=new Dashboard(app);
             Render((FrameworkElement)dashboard.Content,840,720,"artifacts/previews/dashboard.png");
