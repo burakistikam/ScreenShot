@@ -25,7 +25,7 @@ internal sealed class Dashboard : Window
         Background = Brush("#0D1520"); FontFamily = new FontFamily("Segoe UI");
         var root = new StackPanel { Margin = new Thickness(22) };
         var heading = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
-        var version = Text("v0.3.3", 11, "#9AACBE"); version.VerticalAlignment = VerticalAlignment.Center;
+        var version = Text("v0.3.5", 11, "#9AACBE"); version.VerticalAlignment = VerticalAlignment.Center;
         DockPanel.SetDock(version, Dock.Right); heading.Children.Add(version);
         heading.Children.Add(Text("ScreenShot", 24, "#F1F5F9", FontWeights.SemiBold)); root.Children.Add(heading);
         var subtitle = Text("Capture and annotate any part of your screen.", 13, "#9FB0C4"); subtitle.Margin = new Thickness(0, 0, 0, 14); root.Children.Add(subtitle);

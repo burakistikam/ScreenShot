@@ -73,6 +73,28 @@ internal static class Program
                 var decoded=BitmapDecoder.Create(stream,BitmapCreateOptions.None,BitmapCacheOption.OnLoad);Equal(80,decoded.Frames[0].PixelWidth);Equal(50,decoded.Frames[0].PixelHeight);
             }
         });
+        Check("file export routes PNG, JPEG and PDF and rejects unknown extensions",()=> {
+            string folder=Path.Combine(Path.GetTempPath(),"ScreenShot-export-"+Guid.NewGuid());
+            Directory.CreateDirectory(folder);
+            try {
+                var image=MarkRenderer.Export(source,new Box(10,10,80,50),Array.Empty<Mark>());
+                foreach(string extension in new[]{".png",".jpg",".jpeg",".PDF"}) {
+                    string path=Path.Combine(folder,"capture"+extension);ImageFile.Save(image,path);
+                    if(extension==".PDF") True(File.ReadAllText(path).StartsWith("%PDF-1.4"),"PDF has wrong signature");
+                    else { using var input=File.OpenRead(path);var decoded=BitmapDecoder.Create(input,BitmapCreateOptions.None,BitmapCacheOption.OnLoad);Equal(80,decoded.Frames[0].PixelWidth);Equal(50,decoded.Frames[0].PixelHeight); }
+                }
+                string invalid=Path.Combine(folder,"capture.txt");File.WriteAllText(invalid,"keep");
+                try { ImageFile.Save(image,invalid);throw new Exception("Unsupported format accepted"); } catch(NotSupportedException) { }
+                Equal("keep",File.ReadAllText(invalid));
+            } finally { Directory.Delete(folder,true); }
+        });
+        if(Array.IndexOf(args,"--pdf-preview")>=0) {
+            Directory.CreateDirectory("artifacts/pdf-tests");
+            var marks=new[]{new Mark(Guid.NewGuid(),Tool.Arrow,new[]{new Pt(20,25),new Pt(170,90)},"#FF0000",4,""),new Mark(Guid.NewGuid(),Tool.Text,new[]{new Pt(20,100)},"#FFFFFF",2,"PDF export",160)};
+            var image=MarkRenderer.Export(source,new Box(0,0,200,140),marks);
+            ImageFile.Save(image,"artifacts/pdf-tests/annotated.pdf");
+            ImageFile.Save(image,"artifacts/pdf-tests/annotated.png");
+        }
         Check("losing mouse capture cancels pending gesture and restores crop",()=> {
             var window=new OverlayWindow(new CaptureFrame(source,0,0),new Settings());
             var flags=BindingFlags.Instance|BindingFlags.NonPublic;

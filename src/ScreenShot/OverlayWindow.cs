@@ -376,14 +376,11 @@ internal sealed class OverlayWindow : Window
         CommitText(); exporting=true;
         try
         {
-            var dialog=new SaveFileDialog { Title="Save screenshot", Filter="PNG image|*.png|JPEG image|*.jpg", DefaultExt=".png", AddExtension=true,
+            var dialog=new SaveFileDialog { Title="Save screenshot", Filter=ImageFile.Filter, DefaultExt=".png", AddExtension=true,
                 FileName=$"Screenshot-{DateTime.Now:yyyyMMdd-HHmmss}", InitialDirectory=Directory.Exists(settings.SaveFolder)?settings.SaveFolder:Environment.GetFolderPath(Environment.SpecialFolder.MyPictures) };
             if(dialog.ShowDialog(this)!=true)return;
             var bitmap=MarkRenderer.Export(frame.Bitmap,surface.Area,surface.Document.Items);
-            BitmapEncoder encoder=Path.GetExtension(dialog.FileName).Equals(".jpg",StringComparison.OrdinalIgnoreCase) || Path.GetExtension(dialog.FileName).Equals(".jpeg",StringComparison.OrdinalIgnoreCase)
-                ? new JpegBitmapEncoder { QualityLevel=95 } : new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(bitmap));
-            using(var stream=new FileStream(dialog.FileName,FileMode.Create,FileAccess.Write))encoder.Save(stream);
+            ImageFile.Save(bitmap,dialog.FileName);
             settings.SaveFolder=Path.GetDirectoryName(dialog.FileName)!;
             try { settings.Save(); } catch(Exception ex) when(ex is IOException or UnauthorizedAccessException) { /* Image was saved; folder preference is best effort. */ }
             Completed?.Invoke("Saved to " + dialog.FileName); Close();

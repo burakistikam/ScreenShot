@@ -2,7 +2,7 @@
 
 A small, local-first screenshot and annotation app for Windows, inspired by Lightshot's quick capture workflow. No account, uploads, telemetry, or screenshot server.
 
-**v0.3.3 — UX preview.** Windows x64. The portable build includes .NET; extract the ZIP and run `ScreenShot.exe`.
+**v0.3.5 — UX preview.** Windows x64. The portable build includes .NET; extract the ZIP and run `ScreenShot.exe`.
 
 ![Editor preview using synthetic sample content](docs/images/editor.png)
 
@@ -11,11 +11,11 @@ A small, local-first screenshot and annotation app for Windows, inspired by Ligh
 1. Start ScreenShot. Press **Print Screen** or click **Capture screenshot**.
 2. Drag over the area to capture. Resize its edges/corners as needed.
 3. Use **Arrow**, **Pen**, **Line**, **Box**, **Highlight**, or **Text**.
-4. **Ctrl+C** copies the annotated image; **Ctrl+S** saves PNG or JPEG. **Esc** cancels.
+4. **Ctrl+C** copies the annotated image; **Ctrl+S** saves PNG, JPEG or PDF. **Esc** cancels.
 
 The **Move** tool selects existing annotations. Drag to move them, **Delete** to remove, or double-click text / press **F2** to edit it. Drag an empty part of the selection with Move to reposition the crop. Color and width controls apply to the selected annotation, or to future marks. Text wraps; **Enter** or **Apply** commits it, **Shift+Enter** adds a new line, and **Esc** or **Cancel** discards the edit. **Ctrl+S** applies active text before saving. **Ctrl+Z** undoes, **Ctrl+Y** or **Ctrl+Shift+Z** redoes. **Ctrl+A** selects the full virtual desktop. Reselect changes the crop without deleting annotations.
 
-Click the shortcut on the home screen to assign a new key combination. Single keys (including letters, numbers, function keys and Scroll Lock) and key combinations are accepted. Single-key shortcuts also capture while typing in other apps; a dedicated mouse-mapped key such as Scroll Lock avoids that. Re-recording the current shortcut confirms it without starting a capture. Esc cancels and Tab navigates the recorder. Raw mouse-button binding is not implemented; DPI-only buttons must emit a supported keyboard key through their mouse software. If Print Screen is occupied, the app tries **Ctrl+Shift+S** and reports the fallback; you can choose another shortcut. It does not change Windows settings. Closing the home window leaves the tray icon running; **tray → Exit** quits. The app does not add itself to Windows startup.
+Click the shortcut on the home screen to assign a new key combination. Single keys (including letters, numbers, function keys and Scroll Lock) and key combinations are accepted. Single-key shortcuts also capture while typing in other apps; a dedicated mouse-mapped key such as Scroll Lock avoids that. Re-recording the current shortcut confirms it without starting a capture. Esc cancels and Tab navigates the recorder. Raw mouse-button binding is not implemented; DPI-only buttons must emit a supported keyboard key through their mouse software. If Print Screen is occupied, the app tries **Ctrl+Shift+S** and reports the fallback; you can choose another shortcut. It does not change Windows settings. Closing the home window leaves the tray icon running; **tray → Exit** quits. The app does not add itself to Windows startup automatically. Launch `ScreenShot.exe --background` to start in the notification area without opening the home window; a shortcut with this argument can be placed in the Windows Startup folder. A second background launch leaves the running app undisturbed.
 
 Settings: `%LOCALAPPDATA%\ScreenShot\settings.json`. Bounded local capture diagnostics: `%LOCALAPPDATA%\ScreenShot\capture.log` (timings and errors, no image content). Screenshots are written only when you choose Save or Copy.
 
@@ -25,7 +25,7 @@ Install the **.NET 10 SDK** on Windows. Then:
 
 ```powershell
 ./scripts/build.ps1             # release build + core and WPF rendering tests
-./scripts/build.ps1 -Publish    # also creates artifacts/ScreenShot-0.3.3-win-x64.zip
+./scripts/build.ps1 -Publish    # also creates artifacts/ScreenShot-0.3.5-win-x64.zip
 dotnet run --project src/ScreenShot
 ```
 
@@ -48,3 +48,5 @@ Live desktop testing verified area selection, arrow and text annotation, undo/re
 The compact editor shows contextual Thickness or Font size (in pixels), hides unused controls for Move/Highlight, and separates editing from Copy/Save. Tool and color selection states are exposed to assistive technology. The home screen has a compact shortcut row with Change; typing warnings only appear after assigning an unmodified letter or number. The editor has vector icons, quick color swatches and tool keys: **V** Move, **A** Arrow, **P** Pen, **L** Line, **R** Box, **H** Highlight, **T** Text. Reopening the executable brings the running app forward instead of creating another instance.
 
 Screenshots are never uploaded. Link sharing, OCR, scrolling capture, recording, and cloud history are outside this version's scope.
+
+PDF export saves the annotated crop as one borderless page, preserving its aspect ratio and original pixels with lossless compression. Choose **PDF document** in the Save dialog. No PDF printer is required.

@@ -25,9 +25,10 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        bool background = Array.Exists(e.Args, arg => string.Equals(arg, "--background", StringComparison.OrdinalIgnoreCase));
         activation=new EventWaitHandle(false,EventResetMode.AutoReset,"Local\\ScreenShot.Activate.v1");
         instance = new Mutex(true, "Local\\ScreenShot.Desktop.v1", out bool first);
-        if (!first) { activation.Set(); Shutdown(); return; }
+        if (!first) { if (!background) activation.Set(); Shutdown(); return; }
         activationWait=ThreadPool.RegisterWaitForSingleObject(activation,(_,_)=>Dispatcher.BeginInvoke(ShowDashboard),null,Timeout.Infinite,false);
         Preferences = Settings.Load();
         shortcut = new GlobalShortcut();
@@ -51,7 +52,7 @@ public partial class App : Application
         menu.Items.Add("Exit", null, (_, _) => Dispatcher.InvokeAsync(Quit));
         tray.ContextMenuStrip = menu;
         tray.DoubleClick += (_, _) => Dispatcher.InvokeAsync(ShowDashboard);
-        ShowDashboard();
+        if (!background) ShowDashboard();
     }
 
     internal void HandleShortcutPressed()
