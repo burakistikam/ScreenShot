@@ -2,7 +2,17 @@
 
 A small, local-first screenshot and annotation app for Windows, inspired by Lightshot's quick capture workflow. No account, uploads, telemetry, or screenshot server.
 
-**v0.3.5 — UX preview.** Windows x64. The portable build includes .NET; extract the ZIP and run `ScreenShot.exe`.
+**v0.3.5 — UX preview.** Windows x64. Both the installer and portable build include .NET.
+
+## Install or update
+
+Download **ScreenShot-0.3.5-Setup.exe** from [GitHub Releases](https://github.com/burakistikam/ScreenShot/releases/tag/v0.3.5) and run it. Setup installs for your Windows account without administrator rights. Desktop shortcut and background startup at Windows sign-in are selectable during installation. Start Menu access is always added.
+
+To update, exit ScreenShot from its tray menu, then run the newer Setup.exe. Setup reuses the existing installation folder and keeps your shortcut/settings. It asks you to close ScreenShot if it is still running, so an unfinished capture is not forcibly discarded. Updates are downloaded manually; there is no automatic update checker.
+
+Uninstall through Windows **Settings → Apps → Installed apps → ScreenShot**. Uninstall removes the installed program and its shortcuts, but keeps your saved screenshots and your preferences. Preferences remain in `%LOCALAPPDATA%\ScreenShot`.
+
+The app and installer are unsigned, so Windows may show an unknown-publisher warning. The portable ZIP remains available: extract it and run `ScreenShot.exe`.
 
 ![Editor preview using synthetic sample content](docs/images/editor.png)
 
@@ -26,6 +36,7 @@ Install the **.NET 10 SDK** on Windows. Then:
 ```powershell
 ./scripts/build.ps1             # release build + core and WPF rendering tests
 ./scripts/build.ps1 -Publish    # also creates artifacts/ScreenShot-0.3.5-win-x64.zip
+./scripts/build.ps1 -Installer -InnoCompiler 'C:\path\to\ISCC.exe' # also builds Setup.exe with Inno Setup 6
 dotnet run --project src/ScreenShot
 ```
 

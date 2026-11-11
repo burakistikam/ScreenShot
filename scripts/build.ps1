@@ -1,6 +1,19 @@
-param([switch]$Publish)
+param([switch]$Publish, [switch]$Installer, [string]$InnoCompiler)
 $ErrorActionPreference='Stop'
 $repoRoot=Split-Path $PSScriptRoot -Parent
+$version=([xml](Get-Content (Join-Path $repoRoot 'src/ScreenShot/ScreenShot.csproj'))).Project.PropertyGroup.Version
+if($Installer){
+    $Publish=$true
+    if(-not $InnoCompiler){
+        $candidates=@(
+            (Join-Path $repoRoot '.tools/InnoSetup/tools/ISCC.exe'),
+            "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe",
+            "$env:LOCALAPPDATA/Programs/Inno Setup 6/ISCC.exe"
+        )
+        $InnoCompiler=$candidates | Where-Object {Test-Path $_} | Select-Object -First 1
+    }
+    if(-not $InnoCompiler -or -not(Test-Path $InnoCompiler)){throw 'Provide Inno Setup 6 compiler path with -InnoCompiler.'}
+}
 $dotnetCommand=Get-Command dotnet -ErrorAction SilentlyContinue
 $dotnetExe=if($dotnetCommand){$dotnetCommand.Source}else{Join-Path $env:USERPROFILE '.dotnet/dotnet.exe'}
 if(-not(Test-Path $dotnetExe)){throw 'Install the .NET 10 SDK first: https://dotnet.microsoft.com/download/dotnet/10.0'}
@@ -18,6 +31,10 @@ try {
         Copy-Item README.md artifacts/win-x64/README.md
         New-Item -ItemType Directory -Force artifacts/win-x64/docs/images | Out-Null
         Copy-Item docs/images/*.png artifacts/win-x64/docs/images/
-        Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/ScreenShot-0.3.5-win-x64.zip -Force
+        Compress-Archive -Path artifacts/win-x64/* -DestinationPath "artifacts/ScreenShot-$version-win-x64.zip" -Force
+        if($Installer){
+            & $InnoCompiler "/DAppVersion=$version" scripts/installer.iss
+            if($LASTEXITCODE -ne 0){throw 'Installer compilation failed'}
+        }
     }
 } finally {Pop-Location}
